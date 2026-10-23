@@ -1,0 +1,10 @@
+name: mcpaper-gonggao
+version: 1.0.0
+main: com.adongcraft.gonggao.GonggaoPlugin
+api-version: '26.3'
+description: 用书把还没看过的公告逐本交给玩家
+author: adongshaln
+commands:
+  gonggao:
+    description: 打开还没看过的公告
+    usage: /gonggao [next]
