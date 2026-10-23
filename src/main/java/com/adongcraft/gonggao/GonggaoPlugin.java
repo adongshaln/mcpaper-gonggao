@@ -1,8 +1,12 @@
 package com.adongcraft.gonggao;
 
+import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.identity.Identity;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.Style;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
@@ -94,14 +98,14 @@ public final class GonggaoPlugin extends JavaPlugin implements CommandExecutor, 
         if (unread.isEmpty()) {
             ledger.forgetOpen(player.getUniqueId());
             if (fromCommand) {
-                player.sendMessage(Component.text("没有新的公告。", NamedTextColor.GRAY));
+                player.sendMessage(line("没有新的公告。", NamedTextColor.GRAY));
             }
             return false;
         }
         Notice notice = unread.getFirst();
         ledger.rememberOpen(player.getUniqueId(), notice.id());
         player.openBook(book(notice));
-        player.sendMessage(Component.text("有一条公告：" + notice.title() + "。看完后点最后一页的「我已阅读」。", NamedTextColor.GOLD));
+        player.sendMessage(line("新功能：" + notice.title(), NamedTextColor.GOLD));
         return true;
     }
 
@@ -113,28 +117,56 @@ public final class GonggaoPlugin extends JavaPlugin implements CommandExecutor, 
         }
         ledger.markRead(player.getUniqueId(), openId);
         ledger.save();
-        if (!openNext(player, false)) {
-            player.sendMessage(Component.text("公告都看完了。", NamedTextColor.GRAY));
-        }
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            if (!player.isOnline()) {
+                return;
+            }
+            if (!openNext(player, false)) {
+                player.sendMessage(line("新功能都看完了。", NamedTextColor.GRAY));
+            }
+        }, 20L);
     }
 
     private ItemStack book(Notice notice) {
         ItemStack book = new ItemStack(Material.WRITTEN_BOOK);
         BookMeta meta = (BookMeta) book.getItemMeta();
-        meta.title(Component.text(trim(notice.title(), 32)));
-        meta.author(Component.text("公告"));
+        meta.title(line("新功能！", NamedTextColor.GOLD));
+        meta.author(line(trim(notice.title(), 16), NamedTextColor.DARK_AQUA));
+        meta.addPages(line("新功能！", NamedTextColor.GOLD, TextDecoration.BOLD)
+                .append(Component.newline())
+                .append(Component.newline())
+                .append(line(notice.title(), NamedTextColor.DARK_AQUA, TextDecoration.BOLD))
+                .append(Component.newline())
+                .append(Component.newline())
+                .append(line("向右翻页。", NamedTextColor.GRAY)));
         for (String page : notice.pages()) {
-            meta.addPages(Component.text(page));
+            meta.addPages(line(page, NamedTextColor.BLACK));
         }
-        meta.addPages(Component.text("看完了就点下面。\n还有下一条的话，会接着打开。\n\n", NamedTextColor.GRAY)
-                .append(Component.text("【我已阅读】", NamedTextColor.DARK_GREEN)
-                        .clickEvent(ClickEvent.callback(audience -> {
-                            if (audience instanceof Player reader) {
-                                Bukkit.getScheduler().runTask(this, () -> acknowledge(reader));
-                            }
-                        }, options -> options.uses(1).lifetime(Duration.ofMinutes(30))))));
+        meta.addPages(line("新功能！", NamedTextColor.GOLD, TextDecoration.BOLD)
+                .append(Component.newline())
+                .append(line(notice.title(), NamedTextColor.DARK_AQUA, TextDecoration.BOLD))
+                .append(Component.newline())
+                .append(Component.newline())
+                .append(line("下一条", NamedTextColor.DARK_GREEN, TextDecoration.BOLD)
+                        .clickEvent(ClickEvent.callback(this::onRead, options -> options.uses(1).lifetime(Duration.ofMinutes(30))))));
         book.setItemMeta(meta);
         return book;
+    }
+
+    private void onRead(Audience audience) {
+        Player reader = audience instanceof Player player ? player : audience.get(Identity.UUID).map(Bukkit::getPlayer).orElse(null);
+        if (reader == null) {
+            return;
+        }
+        Bukkit.getScheduler().runTask(this, () -> acknowledge(reader));
+    }
+
+    private static Component line(String text, NamedTextColor color, TextDecoration... decorations) {
+        Style style = Style.style(color).decoration(TextDecoration.ITALIC, false);
+        for (TextDecoration decoration : decorations) {
+            style = style.decoration(decoration, true);
+        }
+        return Component.text(text, style);
     }
 
     private static String trim(String text, int limit) {
