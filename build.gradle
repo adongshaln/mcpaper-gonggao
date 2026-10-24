@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'com.adongcraft.gonggao'
-version = '1.2.1'
+version = '1.2.2'
 
 repositories {
     maven { url = 'https://repo.papermc.io/repository/maven-public/' }
