@@ -1,10 +1,16 @@
 name: mcpaper-gonggao
-version: 1.0.0
+version: '${version}'
 main: com.adongcraft.gonggao.GonggaoPlugin
 api-version: '26.3'
-description: 用书把还没看过的公告逐本交给玩家
+description: Adongcraft 功能手册，按主题查阅插件用法与更新
 author: adongshaln
+softdepend: [AuthMe, WitchHoe, ClickSorted, mcpaper-biaoji, mcpaper-zhuizong, mcpaper-stats-leaderboard, mcpaper-luodiguigen, mcpaper-siwangbaoliu, mcpaper-xinxikeshihua]
 commands:
   gonggao:
-    description: 打开还没看过的公告
-    usage: /gonggao [next]
+    description: 查阅 Adongcraft 功能手册
+    aliases: [gg, guide]
+    usage: /gonggao [unread|主题或关键词|reload]
+permissions:
+  gonggao.reload:
+    description: 重载功能手册内容
+    default: op

@@ -1,0 +1,3 @@
+# 登录成功后只显示一次可点击提醒，介绍正文在书中阅读。
+join-reminder: true
+join-delay-ticks: 60

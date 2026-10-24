@@ -6,6 +6,9 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -18,7 +21,6 @@ final class ReadLedger {
     private final JavaPlugin plugin;
     private final File file;
     private final Map<UUID, Set<String>> read = new HashMap<>();
-    private final Map<UUID, String> open = new HashMap<>();
     private boolean dirty;
 
     ReadLedger(JavaPlugin plugin) {
@@ -31,7 +33,10 @@ final class ReadLedger {
         if (!file.isFile()) {
             return;
         }
-        ConfigurationSection section = YamlConfiguration.loadConfiguration(file).getConfigurationSection("read");
+        YamlConfiguration stored = new YamlConfiguration();
+        try { stored.load(file); }
+        catch (Exception ex) { throw new IllegalStateException("无法读取公告阅读记录，停止加载以保护存档", ex); }
+        ConfigurationSection section = stored.getConfigurationSection("read");
         if (section == null) {
             return;
         }
@@ -51,20 +56,7 @@ final class ReadLedger {
 
     void markRead(UUID playerId, String noticeId) {
         read.computeIfAbsent(playerId, ignored -> new HashSet<>()).add(noticeId);
-        open.remove(playerId);
         dirty = true;
-    }
-
-    void rememberOpen(UUID playerId, String noticeId) {
-        open.put(playerId, noticeId);
-    }
-
-    String openId(UUID playerId) {
-        return open.get(playerId);
-    }
-
-    void forgetOpen(UUID playerId) {
-        open.remove(playerId);
     }
 
     void save() {
@@ -77,7 +69,10 @@ final class ReadLedger {
         }
         try {
             file.getParentFile().mkdirs();
-            yaml.save(file);
+            java.nio.file.Path temporary = file.toPath().resolveSibling("read.next.yml");
+            yaml.save(temporary.toFile());
+            try { Files.move(temporary, file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
+            catch (AtomicMoveNotSupportedException ex) { Files.move(temporary, file.toPath(), StandardCopyOption.REPLACE_EXISTING); }
             dirty = false;
         } catch (IOException exception) {
             plugin.getLogger().log(Level.SEVERE, "无法保存公告阅读记录", exception);
